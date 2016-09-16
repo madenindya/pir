@@ -9,7 +9,7 @@ sub start_with_number {
 	return $sentence =~ /^\d/;
 }
 
-open (IN, "Korpus2.txt");
+open (IN, "Korpus.txt");
 open (OUT, ">hasil.txt");
 
 my %sections;
@@ -28,9 +28,8 @@ my $sentence_count;
 while ($line = <IN>) {
 	chop($line);
 
-	# group section
+	# grouping section
 	if ($line =~ /<SECTION>/) {
-		# trim the word 'SECTION' and some character such as: < > \s
 		$line =~ s/SECTION//g;
 		$line =~ s/[<>\/\s+]//g;
 		$tmp = ++$sections{$line};
@@ -55,36 +54,43 @@ while ($line = <IN>) {
 	
 		# read all text in document
 		while ($txt = <IN>) {
-			chomp($line);
+			chomp($txt);
 
 			if ($txt =~ /<\/TEXT>/) {
 				last;
 			}
+			$txt =~ s/^[\s\t]+//;
 
+			#check ordered list --> hilangkan list-nya
+			$txt =~ s/^[0-9]+\.//;
+			
 			@sentences_raw = split(/[.?!]/, $txt);
 			my @sentences;
 			$i = 0;
 			
 			for my $sentence (@sentences_raw) {
 				
-				$sentence =~ s/[\n]//g;
-				$sentence_no_space = $sentence;
-				$sentence_no_space =~ s/[\s+]//;  ## check: s/[\s+]//g
-
-				if (length $sentence_no_space > 0) {
-					
-
-					if ($sentence =~ /^\d/ && $i != 0) {
-						# merge the number with the previous sentence
-						$sentences[$i-1] = "$sentences[$i-1].$sentence";
-					} else {
-						push @sentences, $sentence;
-						$sentence_count++;
-						$doc_sentences_count++;
-						# print OUT "$sentence_count###$sentence---\n";
-						$i++;
-					}
-			
+				# check numeral. Cth: 9.000
+				if ($sentence =~ /^\d/ && $i != 0 && $sentences[$i-1] =~ /\d$/) {
+					$sentences[$i-1] = "$sentences[$i-1].$sentence";
+					next;
+				}
+				
+				# check website. Cth: google.com
+				if ($sentence =~ /^[a-z]/ && $i != 0 && $sentences[$i-1] =~ /[a-z]$/) {
+					$sentences[$i-1] = "$sentences[$i-1].$sentence";
+					next;
+				}
+				
+				#check other FL.1 No.3 Rp.2 Rp. 3
+				
+				$sentence =~ s/^[\s\t]+//;
+				if (length $sentence > 0) {					
+					push @sentences, $sentence;
+					$sentence_count++;
+					$doc_sentences_count++;
+					# print OUT "$sentence_count###$sentence---\n";
+					$i++;
 				}
 
 			}
@@ -92,9 +98,7 @@ while ($line = <IN>) {
 			foreach my $n (@sentences) {
 				print OUT "###$n\n";
 			}
-			
 		}
-		
 		
 		if ($doc_sentences_count > $doc_sentence_max) {
 			$doc_sentence_max = $doc_sentences_count;
