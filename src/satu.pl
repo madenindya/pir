@@ -66,13 +66,25 @@ while ($line = <IN>) {
 			
 			@sentences_raw = split(/[.?!]/, $txt);
 			my @sentences;
+			$len = @sentences_raw;
 			$i = 0;
 			
 			for my $sentence (@sentences_raw) {
 				
-				# check numeral. Cth: 9.000
-				if ($sentence =~ /^\d/ && $i != 0 && $sentences[$i-1] =~ /\d$/) {
-					$sentences[$i-1] = "$sentences[$i-1].$sentence";
+				# check for numeral cases
+				if ($i != 0 && $sentence =~ /^\d/) {
+					# Cth: 9.000
+					if ($sentences[$i-1] =~ /\d$/) {
+						$sentences[$i-1] = "$sentences[$i-1].$sentence";
+					} 
+					# Cth: No.3 
+					elsif ($sentences[$i-1] =~ /No$/) {
+						$sentences[$i-1] = "$sentences[$i-1]. $sentence";
+					}
+					# Cth: Rp.3 
+					elsif ($sentences[$i-1] =~ /Rp$/) {
+						$sentences[$i-1] = "$sentences[$i-1] $sentence";
+					}
 					next;
 				}
 				
@@ -82,10 +94,20 @@ while ($line = <IN>) {
 					next;
 				}
 				
-				#check other FL.1 No.3 Rp.2 Rp. 3
 				
 				$sentence =~ s/^[\s\t]+//;
-				if (length $sentence > 0) {					
+				if (length $sentence > 0) {	
+
+					# No. 3	
+					if ($i < $len - 1) {
+						if ($sentence =~ /No$/) {
+							#
+							# LANJUT DISINI
+							#
+							# $sentences[$i-1] = "$sentences[$i-1]. $sentence";
+						}	
+					}
+								
 					push @sentences, $sentence;
 					$sentence_count++;
 					$doc_sentences_count++;
