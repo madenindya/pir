@@ -10,7 +10,9 @@ sub start_with_number {
 }
 
 open (IN, "Korpus.txt");
-open (OUT, ">hasil.txt");
+open (OUT, ">hasil_sentence.txt");
+open (OUT2, ">hasil_word.txt");
+# open (OUT, ">hasil.txt");
 
 my %sections;
 my $section_max_name;
@@ -24,6 +26,15 @@ my $doc_sentence_min_no;
 my $doc_no_current;
 
 my $sentence_count;
+
+my $word_count;
+my %words;
+my %words_char;
+my $words_max_char_count;
+my @words_max_char;
+my $word_char_5_count;
+my $word_char_5;
+
 
 while ($line = <IN>) {
 	chop($line);
@@ -57,95 +68,192 @@ while ($line = <IN>) {
 			chomp($txt);
 
 			if ($txt =~ /<\/TEXT>/) {
+
+				if ($doc_sentences_count > $doc_sentence_max) {
+					$doc_sentence_max = $doc_sentences_count;
+					$doc_sentence_max_no = $doc_no_current;
+				}
+				if (!defined $doc_sentence_min or $doc_sentences_count < $doc_sentence_min) {
+					$doc_sentence_min = $doc_sentences_count;
+					$doc_sentence_min_no = $doc_no_current;
+				}
+
 				last;
 			}
+			# remove space or tab in the beginning and ending
 			$txt =~ s/^[\s\t]+//;
-
-			#check ordered list --> hilangkan list-nya
-			$txt =~ s/^[0-9]+\.//;
+			$txt =~ s/[\s\t]+$//;
 			
-			@sentences_raw = split(/[.?!]/, $txt);
+			# split by space
+			@tokens = split(/\s+/, $txt);
+			my $len;
 			my @sentences;
-			$len = @sentences_raw;
+			my $sentence;
+
 			$i = 0;
 			
-			for my $sentence (@sentences_raw) {
-				
-				# check for numeral cases
-				if ($i != 0 && $sentence =~ /^\d/) {
-					# Cth: 9.000
-					if ($sentences[$i-1] =~ /\d$/) {
-						$sentences[$i-1] = "$sentences[$i-1].$sentence";
+			for my $token (@tokens) {
+				if (length $token > 0) {
+					$word_count++;
+
+					# Identify unique word
+					$word = $token;
+					# Special case: gelar / nama alkitab
+					if ($word =~ /^Dr|Drs|HM|Ir|OSU|Prof|Prof.drh|S.H|bdk|Ef|Kol|Kor|Wah|Yer|Yes|Yoh/) {
+						++$words{$word};
+					} else {
+						# to lower case & remove unecessary character
+						$word =~ tr/[A-Z]/[a-z]/;
+						$word =~ s/[,"'!?()]//g;
+						# remove (:) if apper in the end of word
+						$word =~ s/:$//;
+						# remove dot (.) if appear in beginning or in the end of word
+						$word =~ s/^\.[.]*//;
+						$word =~ s/\.[.]*$//;
+						++$words{$word};
+					}
+					$word_length = length $word;
+					if ($word_length > $words_max_char_count) {
+						$words_max_char_count = $word_length;
+						@words_max_char = $word;
 					} 
-					# Cth: No.3 
-					elsif ($sentences[$i-1] =~ /No$/) {
-						$sentences[$i-1] = "$sentences[$i-1]. $sentence";
+					elsif ($word_length == $words_max_char_count) {
+						push @words_max_char, $word;
 					}
-					# Cth: Rp.3 
-					elsif ($sentences[$i-1] =~ /Rp$/) {
-						$sentences[$i-1] = "$sentences[$i-1] $sentence";
+					if ($word_length % 5 == 0) {
+						$word_char_5_count++;
+						$word_char_5 .= " $word";
 					}
-					next;
-				}
-				
-				# check website. Cth: google.com
-				if ($sentence =~ /^[a-z]/ && $i != 0 && $sentences[$i-1] =~ /[a-z]$/) {
-					$sentences[$i-1] = "$sentences[$i-1].$sentence";
-					next;
-				}
-				
-				
-				$sentence =~ s/^[\s\t]+//;
-				if (length $sentence > 0) {	
+					if ($words{$word} == 1) {
+						print OUT2 "$word\n";
+					}
+					
 
-					# No. 3	
-					if ($i < $len - 1) {
-						if ($sentence =~ /No$/) {
-							#
-							# LANJUT DISINI
-							#
-							# $sentences[$i-1] = "$sentences[$i-1]. $sentence";
-						}	
+					# Identify sentences
+					# Cth: Dangdut Yoo... akan menampilkan
+					if ($i != 0 && $token =~/\.[.]+$/) {
+						if ($len == 0) {
+							$len = @tokens;
+						}
+						if ($i < $len && $tokens[$i+1] =~ /^[a-z]/) {
+							# not a sentence
+							$sentence .= " $token";
+							$i++;
+							next;
+						}
+						# a sentence
+						# save as sentence
+						$sentence .= " $token";
+						push @sentences, $sentence;
+						$sentence_count++;
+						$doc_sentences_count++;
+						print OUT "S###$sentence\n";
+						$sentence = "";
+						$i=0;
 					}
-								
-					push @sentences, $sentence;
-					$sentence_count++;
-					$doc_sentences_count++;
-					# print OUT "$sentence_count###$sentence---\n";
-					$i++;
+					elsif ($i != 0 && $token =~ /[.?!]$/) {
+						# Check if Rp. 500
+						if ($token =~ /^Rp/) {
+							$token =~ s/[.]//;
+							$sentence .= " $token";
+							next;
+						}
+						# Check if No. 12 | Gelar awalan | Nama Alkitab
+						if ($token =~ /^No|Dr|Drs|HM|Ir|OSU|Prof|Prof.drh|S.H|bdk|Ef|Kol|Kor|Wah|Yer|Yes|Yoh/) {
+							$sentence .= " $token";
+							next;
+						}
+						# save as sentence
+						$sentence .= " $token";
+						push @sentences, $sentence;
+						$sentence_count++;
+						$doc_sentences_count++;
+						print OUT "S###$sentence\n";
+						$sentence = "";
+						$i=0;
+					}
+					elsif ($i != 0 && $token =~ /\."|\.''$/) {
+						# save as sentence
+						$sentence .= " $token";
+						push @sentences, $sentence;
+						$sentence_count++;
+						$doc_sentences_count++;
+						print OUT "S###$sentence\n";
+						$sentence = "";
+						$i=0;
+					}
+					elsif ($token =~ /\?"|\?''|\?'|\!"$/) {
+						if ($len == 0) {
+							$len = @tokens;
+						}
+						if ($i < $len && $tokens[$i+1] =~ /^[a-z]/) {
+							# not a sentence
+							$sentence .= " $token";
+							$i++;
+							next;
+						}
+						# a sentence
+						# save as sentence
+						$sentence .= " $token";
+						push @sentences, $sentence;
+						$sentence_count++;
+						$doc_sentences_count++;
+						print OUT "S###$sentence\n";
+						$sentence = "";
+						$i=0;
+					}
+					else {
+						$sentence .= " $token";
+						$i++;
+					}
 				}
-
+			}
+			if (length $sentence > 0) {
+				## not count as a sentence
+				print OUT "####$sentence\n";
 			}
 
-			foreach my $n (@sentences) {
-				print OUT "###$n\n";
-			}
 		}
 		
-		if ($doc_sentences_count > $doc_sentence_max) {
-			$doc_sentence_max = $doc_sentences_count;
-			$doc_sentence_max_no = $doc_no_current;
-		}
-		
-		if (!defined $doc_sentence_min or $doc_sentences_count < $doc_sentence_min) {
-			$doc_sentence_min = $doc_sentences_count;
-			$doc_sentence_min_no = $doc_no_current;
-		}
 	}
 }
 
 close(IN);
 close(OUT);
+close(OUT2);
 
 $avg = $sentence_count / $doc_count;
-print "1. Section terbanyak : $section_max_name dengan $section_max_count dokumen\n";
-print "2. Jumlah dokumen dalam korpus : $doc_count\n";
-print "3. Jumlah kalimat dalam korpus : $sentence_count\n";
-print "   Rata-rata jumlah kalimat dalam dokumen : $avg\n";
-print "4. Dokumen dengan jumlah kalimat terbanyak  : $doc_sentence_max_no dengan $doc_sentence_max kalimat\n";
-print "5. Dokumen dengan jumlah kalimat tersedikit : $doc_sentence_min_no dengan $doc_sentence_min kalimat\n";
 
+$words_unique = keys %words;
+my $words_freq_more_10;
+for my $word (keys %words) {
+    if ($words{$word} > 10) {
+    	$words_freq_more_10++;
+    }
+}
 
+print "1.  Section terbanyak : $section_max_name dengan $section_max_count dokumen\n";
+print "2.  Jumlah dokumen dalam korpus : $doc_count\n";
+print "3.  Jumlah kalimat dalam korpus : $sentence_count\n";
+print "    Rata-rata jumlah kalimat dalam dokumen : $avg\n";
+print "4.  Dokumen dengan jumlah kalimat terbanyak  : $doc_sentence_max_no dengan $doc_sentence_max kalimat\n";
+print "5.  Dokumen dengan jumlah kalimat tersedikit : $doc_sentence_min_no dengan $doc_sentence_min kalimat\n";
+print "6.  Jumlah kata unik dalam korpus : $words_unique\n";
+print "7.  Jumlah kata dengan frekuensi lebih dari 10 : $words_freq_more_10\n";
+print "8.  10 kata yang paling banyak muncul:\n";
+$j = 0;
+for my $kata (sort { $words{$b} <=> $words{$a} } keys %words) {
+    print "     $kata 	: $words{$kata}\n";
+    if (++$j >= 10) {
+    	last;
+    }
+}
+print "9.  Kata yang memiliki jumlah karakter terbanyak: ";
+for my $word (@words_max_char) {
+    print "$word ";
+}
+print "dengan $words_max_char_count karakter\n";
+print "10. Jumlah kata yang jumlah karakternya kelipatan 5 : $word_char_5_count\n";
 
 # for my $sec (keys %section) {
 #     print "The color of '$sec' is $section{$sec}\n";
