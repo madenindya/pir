@@ -1,0 +1,21 @@
+1.  Section terbanyak : EKONOMI dengan 399 dokumen
+2.  Jumlah dokumen dalam korpus : 1971
+3.  Jumlah kalimat dalam korpus : 50561
+    Rata-rata jumlah kalimat dalam dokumen : 25.6524606798579
+4.  Dokumen dengan jumlah kalimat terbanyak  : SPM040401-00154 dengan 215 kalimat
+5.  Dokumen dengan jumlah kalimat tersedikit : SPM040102-01933 dengan 7 kalimat
+6.  Jumlah kata unik dalam korpus : 47936
+7.  Jumlah kata dengan frekuensi lebih dari 10 : 7887
+8.  10 kata yang paling banyak muncul:
+     yang 	: 25638
+     dan 	: 17240
+     di 	: 16944
+     itu 	: 11786
+     dengan 	: 9016
+     untuk 	: 7697
+     tidak 	: 7465
+     dari 	: 7457
+     ini 	: 6722
+     dalam 	: 6224
+9.  Kata yang memiliki jumlah karakter terbanyak: 029/133/128/142/149/080/136/106/141/147/m-15 dengan 44 karakter
+10. Jumlah kata yang jumlah karakternya kelipatan 5 : 202076

@@ -10,9 +10,9 @@ sub start_with_number {
 }
 
 open (IN, "Korpus.txt");
-open (OUT, ">hasil_sentence.txt");
+open (OUT1, ">hasil_sentence.txt");
 open (OUT2, ">hasil_word.txt");
-# open (OUT, ">hasil.txt");
+open (OUT, ">hasil_satu.txt");
 
 my %sections;
 my $section_max_name;
@@ -147,7 +147,7 @@ while ($line = <IN>) {
 						push @sentences, $sentence;
 						$sentence_count++;
 						$doc_sentences_count++;
-						print OUT "S###$sentence\n";
+						print OUT1 "S###$sentence\n";
 						$sentence = "";
 						$i=0;
 					}
@@ -168,7 +168,7 @@ while ($line = <IN>) {
 						push @sentences, $sentence;
 						$sentence_count++;
 						$doc_sentences_count++;
-						print OUT "S###$sentence\n";
+						print OUT1 "S###$sentence\n";
 						$sentence = "";
 						$i=0;
 					}
@@ -178,7 +178,7 @@ while ($line = <IN>) {
 						push @sentences, $sentence;
 						$sentence_count++;
 						$doc_sentences_count++;
-						print OUT "S###$sentence\n";
+						print OUT1 "S###$sentence\n";
 						$sentence = "";
 						$i=0;
 					}
@@ -198,7 +198,7 @@ while ($line = <IN>) {
 						push @sentences, $sentence;
 						$sentence_count++;
 						$doc_sentences_count++;
-						print OUT "S###$sentence\n";
+						print OUT1 "S###$sentence\n";
 						$sentence = "";
 						$i=0;
 					}
@@ -210,7 +210,7 @@ while ($line = <IN>) {
 			}
 			if (length $sentence > 0) {
 				## not count as a sentence
-				print OUT "####$sentence\n";
+				print OUT1 "####$sentence\n";
 			}
 
 		}
@@ -219,7 +219,7 @@ while ($line = <IN>) {
 }
 
 close(IN);
-close(OUT);
+close(OUT1);
 close(OUT2);
 
 $avg = $sentence_count / $doc_count;
@@ -232,29 +232,27 @@ for my $word (keys %words) {
     }
 }
 
-print "1.  Section terbanyak : $section_max_name dengan $section_max_count dokumen\n";
-print "2.  Jumlah dokumen dalam korpus : $doc_count\n";
-print "3.  Jumlah kalimat dalam korpus : $sentence_count\n";
-print "    Rata-rata jumlah kalimat dalam dokumen : $avg\n";
-print "4.  Dokumen dengan jumlah kalimat terbanyak  : $doc_sentence_max_no dengan $doc_sentence_max kalimat\n";
-print "5.  Dokumen dengan jumlah kalimat tersedikit : $doc_sentence_min_no dengan $doc_sentence_min kalimat\n";
-print "6.  Jumlah kata unik dalam korpus : $words_unique\n";
-print "7.  Jumlah kata dengan frekuensi lebih dari 10 : $words_freq_more_10\n";
-print "8.  10 kata yang paling banyak muncul:\n";
+print OUT "1.  Section terbanyak : $section_max_name dengan $section_max_count dokumen\n";
+print OUT "2.  Jumlah dokumen dalam korpus : $doc_count\n";
+print OUT "3.  Jumlah kalimat dalam korpus : $sentence_count\n";
+print OUT "    Rata-rata jumlah kalimat dalam dokumen : $avg\n";
+print OUT "4.  Dokumen dengan jumlah kalimat terbanyak  : $doc_sentence_max_no dengan $doc_sentence_max kalimat\n";
+print OUT "5.  Dokumen dengan jumlah kalimat tersedikit : $doc_sentence_min_no dengan $doc_sentence_min kalimat\n";
+print OUT "6.  Jumlah kata unik dalam korpus : $words_unique\n";
+print OUT "7.  Jumlah kata dengan frekuensi lebih dari 10 : $words_freq_more_10\n";
+print OUT "8.  10 kata yang paling banyak muncul:\n";
 $j = 0;
 for my $kata (sort { $words{$b} <=> $words{$a} } keys %words) {
-    print "     $kata 	: $words{$kata}\n";
+    print OUT "     $kata 	: $words{$kata}\n";
     if (++$j >= 10) {
     	last;
     }
 }
-print "9.  Kata yang memiliki jumlah karakter terbanyak: ";
+print OUT "9.  Kata yang memiliki jumlah karakter terbanyak: ";
 for my $word (@words_max_char) {
-    print "$word ";
+    print OUT "$word ";
 }
-print "dengan $words_max_char_count karakter\n";
-print "10. Jumlah kata yang jumlah karakternya kelipatan 5 : $word_char_5_count\n";
+print OUT "dengan $words_max_char_count karakter\n";
+print OUT "10. Jumlah kata yang jumlah karakternya kelipatan 5 : $word_char_5_count\n";
 
-# for my $sec (keys %section) {
-#     print "The color of '$sec' is $section{$sec}\n";
-# }
+close(OUT);
