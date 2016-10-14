@@ -11,21 +11,19 @@
 # membuat semua kata menjadi lowercase.
 
 open (IN, "korpus-new.txt");
-open (OUT, "> 	korpus-tmp.txt");
+open (OUT, ">masukan2.txt");
 
 
 while ($line = <IN>) {
 	chop($line);
 
 	if ($line =~ /<TEXT>/) {
-		print OUT "$line\n";
 
 		# read all line in document
 		while ($txt = <IN>) {
 			chomp($txt);
 			
 			if ($txt =~ /<\/TEXT>/) {
-				print OUT "$line\n";
 				last;
 			}
 
@@ -41,14 +39,8 @@ while ($line = <IN>) {
 					identify_word($token);
 				}
 			}
-
-			print OUT "\n";
 		}
-	} 
-	else {
-		print OUT "$line\n";
 	}
-
 }
 
 close(IN);
@@ -59,11 +51,11 @@ sub identify_word {
 
 	# to lower case & remove unecessary character
 	$word =~ tr/[A-Z]/[a-z]/;
-	$word =~ s/[.,"'!?():]//g;
+	$word =~ s/[-.,"'!?():0-9]//g;
 
 	# check if there is slash(/) in between alphabetic characters or digit
 	# exclude website url
-	if ($word =~ /[A-Za-z]+\/[A-Za-z]+|[A-Za-z]+\/\d+|\d+\/[A-Za-z]+/ && !($word =~ /http|\.com|\.co\.id/)) {
+	if ($word =~ /[a-z]+\/[a-z]+|[a-z]+\/\d+|\d+\/[a-z]+/ && !($word =~ /http|\.com|\.co\.id/)) {
 		# print OUTSLS "$word\n";
 		@subwords = split(/\//, $word);
 		for my $subword (@subwords) {
@@ -79,5 +71,7 @@ sub process_word {
 	my ($word) = @_;
 	$word =~ s/\///g;
 
-	print OUT "$word ";
+	if (length $word > 0) {
+		print OUT "$word\n";		
+	}
 }

@@ -7,16 +7,85 @@
 use strict;
 use warnings;
 
+my %countstemming;
+my %countstemming2;
+my %countsoundex;
+my %countsoundex2;
 
-open (IN, "masukan.txt");
-open (OUT, ">tmp.txt");
+%countstemming = ();
+foreach my $key (keys %countstemming) {
+    $countstemming{ $key } = {}; # New empty hash reference
+}
+
+print "Percobaan:\n";
+print "1. Menggunakan masukan.txt dilakukan proses stemming dan soundex > output.txt\n";
+print "1. Menggunakan masukan2.txt mencari imbuhan terbanyak & soundex mirip terbanyak > output2.txt\n";
+print "Masukan nomor percobaan (1/2): ";
+my $tipe = <STDIN>;
+my $namafile = "masukan.txt";
+my $outputfile = "output.txt";
+if ($tipe == 2) {
+	$namafile = "masukan2.txt";
+	$outputfile = "output2.txt";
+}
+open (IN, $namafile);
+open (OUT, ">$outputfile");
 
 ## MAIN PROGRAM
 my $line;
 while ($line = <IN>) {
 	chop($line);
+	print OUT "$line ";
+	
+	my $word = stemming($line);
+	print OUT "$word ";
 
-	stemming($line);
+	$word = soundex($word);
+	print OUT "$word\n";
+}
+
+# Percobaan 2
+if ($tipe == 2) {
+
+	undef %countsoundex; 	# hapus untuk soundex seluruh kata
+	undef %countsoundex2; 	# hapus untuk soundex seluruh kata
+
+	print OUT "\nHasil Stemming\n";
+	print "kombinasi imbuhan terbanyak:\n";
+	my $j = 0;
+	for my $i (sort {$countstemming2{$b} <=> $countstemming2{$a} } keys %countstemming2) {
+		print "$i: $countstemming2{$i}\n";
+
+		my %tmp = %{ $countstemming{$i} };
+		my @kk = keys %tmp;
+		print OUT "$i: $countstemming2{$i}\n";
+		for my $k (keys %tmp) {
+			print OUT "  $k $countstemming{$i}{$k}\n";
+			soundex($countstemming{$i}{$k}); # hapus untuk soundex seluruh kata
+		}
+
+		if (++$j >= 5){
+			last;
+		}
+	}
+
+	print OUT "\nHasil Soundex\n";
+	print "Soundex terbanyak:\n";
+	$j = 0;
+	for my $i (sort {$countsoundex2{$b} <=> $countsoundex2{$a} } keys %countsoundex2) {
+		print "$i: $countsoundex2{$i}\n";
+		
+		my %tmp = %{ $countsoundex{$i} };
+		my @kk = keys %tmp;
+		for my $k (keys %tmp) {
+			print OUT "$k, ";
+		}
+		print OUT "\n";
+
+		if (++$j >= 10){
+			last;
+		}
+	}
 }
 
 close(IN);
@@ -25,14 +94,40 @@ close(OUT);
 ### STEMMING
 sub stemming {
 	my ($word) = @_;
+	my $wordtmp = $word;
+	my $ok = 0;
+	my $fimbuhan;
+	my $imbuhan;
 
-	print OUT "$word ";
+	($word, $ok, $imbuhan) = awalan($word);
+	if ($ok) {
+		$fimbuhan = $imbuhan;
+	}
 
-	$word = awalan($word);
-	$word = sisipan($word);
-	$word = akhiran($word);
+	($word, $ok, $imbuhan) = akhiran($word);
+	if ($ok) {
+		if (length $fimbuhan > 0) {
+			$fimbuhan = "$fimbuhan $imbuhan";
+		} else {
+			$fimbuhan = $imbuhan;
+		}
+	}
 
-	print OUT "$word\n";
+	($word, $ok, $imbuhan) = sisipan($word);
+	if ($ok) {
+		if (length $fimbuhan > 0) {
+			$fimbuhan = "$fimbuhan $imbuhan";
+		} else {
+			$fimbuhan = $imbuhan;
+		}
+	}
+
+	if (length $fimbuhan > 0) {
+		$countstemming2{$fimbuhan}++;
+		$countstemming{$fimbuhan}{$wordtmp} = "$word";		
+	}
+
+	return $word;
 }
 
 # sisipan (, -em-, -in-, -ah-)
@@ -40,33 +135,42 @@ sub stemming {
 sub sisipan {
 	my ($word) = @_;
 	my $ok = 0;
+	my $wordtmp = $word;
 
 	($word, $ok) = sisipanEl($word);
-	if ($ok) {
-		return $word;
+	if ($ok && cekSisipan($word)) {
+		return ($word, $ok, "-el-");
 	}
 
 	($word, $ok) = sisipanEr($word);
-	if ($ok) {
-		return $word;
+	if ($ok && cekSisipan($word)) {
+		return ($word, $ok, "-er-");
 	}
 
 	($word, $ok) = sisipanEm($word);
-	if ($ok) {
-		return $word;
+	if ($ok && cekSisipan($word)) {
+		return ($word, $ok, "-em-");
 	}
 
 	($word, $ok) = sisipanIn($word);
-	if ($ok) {
-		return $word;
+	if ($ok && cekSisipan($word)) {
+		return ($word, $ok, "-in-");
 	}
 
 	($word, $ok) = sisipanAh($word);
-	if ($ok) {
-		return $word;
+	if ($ok && cekSisipan($word)) {
+		return ($word, $ok, "-ah-");
 	}
 
-	return $word;
+	return ($wordtmp, 0, "");
+}
+
+sub cekSisipan {
+	my ($word) = @_;
+	if ($word =~ /^[^aeiou][^aeiou]/) {
+		return 0;
+	}
+	return 1;
 }
 
 sub sisipanEl {
@@ -82,6 +186,7 @@ sub sisipanEl {
 	my $len = length $word;
 	if ($len < 4) {
 		# contoh : jelek -> jelek
+		$ok = 0;
 		$word = $wordtmp;
 	}
 
@@ -103,6 +208,7 @@ sub sisipanEr {
 	my $len = length $word;
 	if ($len < 4) {
 		# contoh: berat -> berat
+		$ok = 0;
 		$word = $wordtmp;
 	}
 
@@ -125,6 +231,7 @@ sub sisipanEm {
 	my $len = length $word;
 	if ($len < 4) {
 		# contoh: gemar -> gemar
+		$ok = 0;
 		$word = $wordtmp;
 	}
 
@@ -146,6 +253,7 @@ sub sisipanIn {
 	my $len = length $word;
 	if ($len < 4) {
 		# contoh: sinar -> sinar
+		$ok = 0;
 		$word = $wordtmp;
 	}
 
@@ -165,6 +273,7 @@ sub sisipanAh {
 	my $len = length $word;
 	if ($len < 4) {
 		# contoh: jahit -> jahit
+		$ok = 0;
 		$word = $wordtmp;
 	}
 
@@ -176,87 +285,118 @@ sub sisipanAh {
 sub akhiran {
 	my ($word) = @_;
 	my $ok = 0;
+	my $imbuhan;
 
 	# kan an i
-	($word, $ok) = akhiranLevel0($word);
+	($word, $ok, $imbuhan) = akhiranLevel0($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, $imbuhan);
 	}
 
 	# milik: -ku, -mu, -nya
-	($word, $ok) = akhiranLevel1($word);
+	($word, $ok, $imbuhan) = akhiranLevel1($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, $imbuhan);
 	}
 
 	# kah tah
-	($word, $ok) = akhiranLevel2($word);
+	($word, $ok, $imbuhan) = akhiranLevel2($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, $imbuhan);
 	}
 
-	return $word;
+	return ($word, $ok, $imbuhan);
 }
 
 sub akhiranLevel0 {
 	my ($word) = @_;
 	my $ok = 0;
+	my $wordtmp = $word;
 
 	($word, $ok) = akhiranKan($word);
 	if ($ok) {
-		return ($word, $ok);
+		return ($word, 1, "-kan");
 	}
 
 	($word, $ok) = akhiranAn($word);
 	if ($ok) {
-		return ($word, $ok);
+		return ($word, 1, "-an");
 	}
 
 	($word, $ok) = akhiranI($word);
 	if ($ok) {
-		return ($word, $ok);
+		return ($word, 1, "-i");
 	}
 
-	return ($word, $ok);
+	return ($word, $ok, "");
 }
 
 sub akhiranLevel1 {
 	my ($word) = @_;
 	my $ok = 0;
+	my $wordtmp = $word;
+	my $imbuhan;
 
 	($word, $ok) = akhiranKu($word);
 	if ($ok) {
-		return akhiranLevel0($word);
+		($word, $ok, $imbuhan) = akhiranLevel0($word); 
+		if ($ok) {
+			return ($word, 1, "$imbuhan -ku")
+		} else {
+			return ($word, 1, "-ku")
+		}
 	}
 
 	($word, $ok) = akhiranMu($word);
 	if ($ok) {
-		return akhiranLevel0($word);
+		($word, $ok, $imbuhan) = akhiranLevel0($word); 
+		if ($ok) {
+			return ($word, 1, "$imbuhan -mu")
+		} else {
+			return ($word, 1, "-mu")
+		}
 	}
 
 	($word, $ok) = akhiranNya($word);
 	if ($ok) {
-		return akhiranLevel0($word);
+		($word, $ok, $imbuhan) = akhiranLevel0($word); 
+		if ($ok) {
+			return ($word, 1, "$imbuhan -nya")
+		} else {
+			return ($word, 1, "-nya")
+		}
 	}
 
-	return ($word, $ok);
+	return akhiranLevel0($word);
 }
 
 sub akhiranLevel2 {
 	my ($word) = @_;
 	my $ok = 0;
+	my $wordtmp = $word;
+	my $imbuhan;
 
 	($word, $ok) = akhiranKah($word);
 	if ($ok) {
-		return akhiranLevel1($word);
+		($word, $ok, $imbuhan) = akhiranLevel1($word); 
+		if ($ok) {
+			return ($word, 1, "$imbuhan -kah")
+		} else {
+			return ($word, 1, "-kah")
+		}
 	}
 
 	($word, $ok) = akhiranTah($word);
 	if ($ok) {
-		return akhiranLevel1($word);
+		($word, $ok, $imbuhan) = akhiranLevel1($word); 
+		if ($ok) {
+			return ($word, 1, "$imbuhan -tah")
+		} else {
+			return ($word, 1, "-tah")
+		}
 	}
 
-	return ($word, $ok);
+	return akhiranLevel1($word);
 }
 
 sub akhiranKan {
@@ -426,41 +566,48 @@ sub akhiranTah {
 		else {
 			$isExist = 1;
 		}
-	}
+	}	
 
 	return ($word, $isExist);
 }
 
-##
 ## DETEKSI AWALAN
 sub awalan {
 	my ($word) = @_;
 	my $ok = 0;
+	my $wordtmp = $word;
 
 	## DETEKSI KOMBINASI AWALAN
 	($word, $ok) = awalanPer($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, "per-");
 	}
 
 	($word, $ok) = awalanBer($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, "ber-");
 	}
 
 	($word, $ok) = awalanSe($word);
 	if ($ok) {
-		return $word;
+		# cth: seperjuangan
+		($word, $ok) = awalanPer($word);
+		if ($ok) {
+			return ($word, $ok, "se- per-");
+		}
+
+		return ($word, 1, "se-");
 	}
 
 	($word, $ok) = awalanTer($word);
 	if ($ok) {
 		# cth: terpelajar
 		($word, $ok) = awalanPer($word);
-		if ($ok) {
-			return $word;
+		if ($ok) {	
+			return ($word, $ok, "ter- per-");
 		}
-		return $word;
+
+		return ($word, 1, "ter-");
 	}
 
 	($word, $ok) = awalanKe($word);
@@ -468,9 +615,10 @@ sub awalan {
 		# cth: kepemilikan
 		($word, $ok) = awalanPe($word);
 		if ($ok) {
-			return $word;
+			return ($word, $ok, "ke- pe-");
 		}
-		return $word;
+
+		return ($word, 1, "ke-");
 	}
 
 	($word, $ok) = awalanDi($word);
@@ -478,34 +626,34 @@ sub awalan {
 		#cth: dipertahankan, dipelajari
 		($word, $ok) = awalanPer($word);
 		if ($ok) {
-			return $word;
+			return ($word, $ok, "di- per-");
 		}
-		return $word;
+
+		return ($word, 1, "di-");
 	}
 
 	($word, $ok) = awalanMe($word);
-	if ($ok == 2) {
-		return $word;
-	}
-	elsif ($ok) {
+	if ($ok) {
 		#cth: memperhatikan
 		($word, $ok) = awalanPer($word);
 		if ($ok) {
-			return $word;
+			return ($word, $ok, "me- per-");
 		}
+
 		($word, $ok) = awalanBer($word);
 		if ($ok) {
-			return $word;
+			return ($word, $ok, "me- ber-");;
 		}
-		return $word;
+
+		return ($word, 1, "me-");
 	}
 
 	($word, $ok) = awalanPe($word);
 	if ($ok) {
-		return $word;
+		return ($word, $ok, "pe-");
 	}
 
-	return $word;
+	return ($word, 0, "");
 }
 
 sub awalanKe {
@@ -549,9 +697,9 @@ sub awalanPe {
 			$word =~ s/^pem//;
 			$more = 1;
 		}
-		elsif ($word =~ /^pemer/) {
-			$word =~ s/^pem/p/;
-		}
+		# elsif ($word =~ /^pemer/) {
+		# 	$word =~ s/^pem/p/;
+		# }
 		else {
 			$word =~ s/^pe//;
 		}
@@ -615,10 +763,10 @@ sub awalanMe {
 			$word =~ s/^mem//;
 			$isExist = 1;
 		}
-		else {
-			$word =~ s/^mem/p/;
-			$isExist = 2;
-		}
+		# else {
+		# 	$word =~ s/^mem/p/;
+		# 	$isExist = 2;
+		# }
 	}
 	elsif ($word =~ /^men/) {
 		if ($word =~ /^men[c|d|j|sy]/) {
@@ -727,6 +875,7 @@ sub awalanPer {
 ### SOUNDEX
 sub soundex {
 	my ($word) = @_;
+	my $wordtmp = $word;
 
 	# ambil karakter pertama
 	my $fchar = substr $word, 0, 1;
@@ -774,6 +923,11 @@ sub soundex {
 
 	# ambil 4 karakter pertama
 	$word = substr $word, 0, 4;
+
+	if (!exists $countsoundex{$word}{$wordtmp}) {
+		$countsoundex2{$word}++;
+	}
+	$countsoundex{$word}{$wordtmp}++;
 
 	return $word;
 }
