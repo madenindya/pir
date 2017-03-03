@@ -1,0 +1,8 @@
+@relation topik
+
+@attribute judul string
+@attribute isi string
+@attribut class {olahraga,internasional,ekonomi,politik}
+
+@data
+
